@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP LM317L
+D 100mA 35V Adjustable Linear Regulator, TSSOP-8
+K Adjustable Voltage Regulator 100mA Positive
+F https://www.ti.com/lit/ds/symlink/lm317l.pdf?ts=1633065300807&ref_url=https%253A%252F%252Fwww.google.com%252F
+$ENDCMP
+#
+#End Doc Library
