@@ -1,0 +1,3 @@
+(sym_lib_table
+  (lib (name LYFT)(type Legacy)(uri /home/sire/Development/Projects/LYFT/Hardware/Library/LYFT.lib)(options "")(descr ""))
+)
