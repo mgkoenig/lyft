@@ -4,14 +4,14 @@ The LYFT firmware follows a classical multi-layer approach, consisting of a hard
 ![alt text](https://github.com/mgkoenig/lyft/blob/main/firmware/architecture.png?raw=true)
 
 The HAL layer utilizes the ASF framework (currently version 3.49.1) for Microchip's SAM MCU's with the following components:
-- DAC (callback)
-- EXTINT (callback)
-- NVM
-- PORT
-- SERCOM I2C (callback)
-- SERCOM USART (polled)
+- DAC (callback) [for audio volume control]
+- EXTINT (callback) [get notified of keypad inputs]
+- NVM [saving configuration and desk positions]
+- PORT [GPIO pin control]
+- SERCOM I2C (callback) [talk to AS1115 LED controller]
+- SERCOM USART (polled) [using a UART module for LIN communication]
 - SYSTEM (core system drivers)
-- TC (callback)
+- TC (callback) [handling motor timings, keypad timings ond more]
 - TCC (callback)
 
 The LYFT application is separated into four modules: 
