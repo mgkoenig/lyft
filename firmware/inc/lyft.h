@@ -25,7 +25,7 @@
 
 #define VERSION_MAJOR						1
 #define VERSION_MINOR						0
-#define VERSION_PATCH						0
+#define VERSION_PATCH						1
 
 #define LYFT_MENU_ENTER_DELAY				2000    // duration of pressing the buttons to enter the menu in ms
 #define LYFT_MENU_LEAVE_DELAY				6		// duration to stay within the menu in s
