@@ -372,14 +372,12 @@ void lyft_run(void)
 			
 			if (safety_pin == false)
 			{
-				if (display_screen == DISPLAY_OFF) {
-					keypad_poll_delay = KEYPAD_POLL_DELAY_NONE;
+				if ((display_screen & DISPLAY_MENU) == DISPLAY_MENU) {
+					lyft_menu_leave();
 				}
-				else if (display_screen != DISPLAY_DESKPOSITION) 
-				{
-					display_screen = DISPLAY_DESKPOSITION;
-					keypad_poll_delay = KEYPAD_POLL_DELAY_LONG;
-				}
+				
+				display_screen = DISPLAY_DESKPOSITION;
+				keypad_poll_delay = KEYPAD_POLL_DELAY_LONG;
 			} 		
 			
 			if (prev_button < BUTTON_MAX)
