@@ -1,9 +1,9 @@
-/*
- * lyft_audio.c
- *
- * Created: 10/12/2021 11:48:47
- *  Author: Matthias Koenig
- */ 
+/**
+ * @file lyft_audio.c
+ * @author Matthias Koenig (mgkoenig) 
+ * @date 10 Dec 2021 
+ * @brief LYFT Audio Features
+ */
 
 #include "lyft_audio.h"
 
@@ -11,37 +11,37 @@
 static void audio_cb_playback (void);
 
 
-bool					audio_enable;
-enum audio_repertoire	current_title;
-uint8_t					beat;
+bool					audio_enable;       /**< Enable or disable the audio feature */
+enum audio_repertoire	current_title;      /**< Currently played title */
+uint8_t					beat;               /**< Progress bar of the currently played title */
 
-
-const uint16_t tone_pitch[SCALE_MAX] = {	// all tone periods in us
-	16,			// PAUSE,
-	3831,		// C4,
-	3413,		// D4,
-	3039,		// E4,
-	2863,		// F4,
-	2551,		// G4,
-	2272,		// A4 = 440Hz,
-	2146,		// B4_MINOR
-	2024,		// B4,	
-	1912,		// C5,
-	1703,		// D5,
-	1517,		// E5,
-	1432,		// F5,
-	1275,		// G5,
-	1136,		// A5,
-	1013,		// B5,
-	956,		// C6,
-	852,		// D6,
-	758,		// E6,
-	716,		// F6,
-	637,		// G6,
-	568,		// A6,
-	506,		// B6,
-	477,		// C7,
-	426			// D7
+/** Define all timer perios for each tone (in usec) */
+const uint16_t tone_pitch[SCALE_MAX] = {	
+	16,			/**< Pause */
+	3831,		/**< Note C4 */
+	3413,		/**< Note D4 */
+	3039,		/**< Note E4 */
+	2863,		/**< Note F4 */
+	2551,		/**< Note G4 */
+	2272,		/**< Note A4 = 440Hz */
+	2146,		/**< Note B4_MINOR */
+	2024,		/**< Note B4 */	
+	1912,		/**< Note C5 */
+	1703,		/**< Note D5 */
+	1517,		/**< Note E5 */
+	1432,		/**< Note F5 */
+	1275,		/**< Note G5 */
+	1136,		/**< Note A5 */
+	1013,		/**< Note B5 */
+	956,		/**< Note C6 */
+	852,		/**< Note D6 */
+	758,		/**< Note E6 */
+	716,		/**< Note F6 */
+	637,		/**< Note G6 */
+	568,		/**< Note A6 */
+	506,		/**< Note B6 */
+	477,		/**< Note C7 */
+	426			/**< Note D7 */
 };
 
 /************************************************************************
@@ -49,10 +49,13 @@ const uint16_t tone_pitch[SCALE_MAX] = {	// all tone periods in us
  * Tone durations must not be longer than 520ms.
  * Otherwise the 16bit counter would overflow! 
  * Generally: the shorter the cue the better. 
- *
  ***********************************************************************/
+ /**
+  * A set of melodies which are played on appropriate occasions to provide 
+  * a delicate audio experience (feedback) to the user. 
+  */
 const struct melody repertoire[REPERTOIRE_MAX] = {
-	{	// title 'none'
+	{	// Title 'none'
 		.play_time = 0,
 		.sequence = (enum audio_scale[]) {PAUSE},
 		.duration = (uint16_t[]) {10}
