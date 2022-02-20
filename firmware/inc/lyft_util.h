@@ -1,13 +1,17 @@
-/*
- * lyft_util.h
+/**
+ * @file lyft_util.h
+ * @author Matthias Koenig (mgkoenig) 
+ * @date 13 Nov 2021 
+ * @brief LYFT Utilities
  *
- * Created: 13/11/2021 12:35:59
- *  Author: Matthias Koenig
- */ 
-
+ * @details This file contains helper macros for bitwise operations. 
+ * Also basic mathematical operations are provided in order to avoid 
+ * including extensive math libs. 
+ */
 
 #ifndef LYFT_UTIL_H_
 #define LYFT_UTIL_H_
+
 
 #include <asf.h>
 
@@ -22,7 +26,7 @@
 #define BITMASK_SET(byte,mask)				((byte) |= (mask))
 #define BITMASK_CLEAR(byte,mask)			((byte) &= (~(mask)))
 #define BITMASK_FLIP(byte,mask)				((byte) ^= (mask))
-#define BITMASK_CHECK_ALL(byte, mask)		(!(~(byte) & (mask)))
+#define BITMASK_CHECK_ALL(byte,mask)		(!(~(byte) & (mask)))
 #define BITMASK_CHECK_ANY(byte,mask)		((byte) & (mask))
 
 #define MIN(a,b)							(((a) < (b)) ? (a) : (b))
