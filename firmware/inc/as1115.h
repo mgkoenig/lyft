@@ -7,11 +7,12 @@
  * @details The HMI board uses a 7-segment display and six 
  * buttons for user interaction. In order to reduce hard
  * wired connections between the controller board and the 
- * HMI board the AS1115 driver is used. 
+ * HMI board the <a href="https://ams.com/en/as1115 ">AS1115 display driver</a> 
+ * is used. 
  *
  * This display driver allows both to drive display segments
  * as well as to read button inputs. All data is send/received
- * using the well known I2C interafce. 
+ * using the well known I2C interface. 
  */
 
 #ifndef AS1115_H_
