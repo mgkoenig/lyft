@@ -59,7 +59,7 @@ enum as1115_operation_mode {
  * BCD value (see #as1115_decode_mode). 
  */
 enum as1115_decode_digit {
-	AS1115_DECODE_DIGIT_NONE				= 0x00,			/**< No decode for digits 7:0
+	AS1115_DECODE_DIGIT_NONE				= 0x00,			/**< No decode for digits 7:0 */
 	AS1115_DECODE_DIGIT_0					= 0x01,			/**< BCD/HEX decoding for digit 0. No decode for digits 7:1 */
 	AS1115_DECODE_DIGIT_0TO2				= 0x07,			/**< BCD/HEX decoding for digits 0:2. No decode for digits 7:3 */
 	AS1115_DECODE_DIGIT_0TO5				= 0x3F,			/**< BCD/HEX decoding for digits 0:5. No decode for digits 7:6 */
