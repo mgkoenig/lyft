@@ -27,7 +27,9 @@
 
 #define LYFT_MENU_ENTER_DELAY				2000    /**< duration of pressing the buttons to enter the menu in ms */
 #define LYFT_MENU_LEAVE_DELAY				6		/**< duration to stay within the menu in s */
+#define LYFT_CALIBRATION_POSITION			1000	/**< desk position must be lower than 1000 (about 70cm) before starting a calibration */
 #define LYFT_CALIBRATION_START_DELAY		2000	/**< duration until calibration will start in ms */
+#define LYFT_AUTOMATIC_DRIVE_DELAY			1500	/**< 1500ms delay before starting to move the desk automatically */
 #define LYFT_OFFSET_RANGE					9		/**< adjustable desk height (on display) by plus/minus 9cm */
 	
 
@@ -77,6 +79,23 @@ enum lyft_offset
 };
 
 /** 
+ * @enum lyft_drive_mode
+ * The moving mode of the desk. 
+ *
+ * In manual mode the memory button has to be hold until the 
+ * final desk height is reached while in automatic mode the 
+ * button has to be pressed for a short term and then the desk
+ * moves autonomously to the memorized position. Obviously, 
+ * manual mode is the safer option while automatic mode is 
+ * more comfortable. 
+ */
+enum lyft_drive_mode {
+	LYFT_DRIVE_MODE_MANUAL,
+	LYFT_DRIVE_MODE_AUTOMATIC,
+	LYFT_DRIVE_MODE_MAX
+};
+
+/** 
  * @struct lyft_config 
  * A configuration file which holds the current configuration. 
  * On the very first start-up the config filed is filled with 
@@ -91,6 +110,7 @@ struct lyft_config {
 	enum lyft_offset			offset;				/**< The offset of the desk height (height adjustment) between plus/minus 9cm */
 	enum display_brightness		brightness;			/**< The brightness of the display (25%, 50%, 75% or 100%) */
 	enum lyft_screentime		screentime;			/**< The display-on time after the last user interaction or change of display information (5s, 10s, 15s or 20s) */
+	enum lyft_drive_mode		drive_mode;			/**< The drive mode of the desk, if the user has to hold a button all the time while moving or if the desk moves automatically */
 };	
 
 

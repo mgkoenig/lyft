@@ -11,7 +11,7 @@
  * Some naming convention:
  * - Step value: the motors specify their current position with 
  * numerical values between 162 and 6537. These values do not represent
- * a certain height in centimetrs rather than a stepper position. 
+ * a certain height in centimeters rather than a stepper position. 
  * - Position: the desk position equals the numerical value of the 
  * the stepper motors. It's the current height of the desk represented 
  * as 'step value'. 
@@ -79,10 +79,9 @@
 #define MOTOR_STATE_ERROR					0x65		/**< Motor state general error condition */
 
 #define MOTOR_SAFETY_PROTOCOL				23			/**< The safety protocol consists of 23 steps */
-#define MOTOR_SAFETY_MARGIN					137			/**< No motor movement if position difference is less than 137 'step values' */
-#define MOTOR_POSITION_MIN					(162 + MOTOR_SAFETY_MARGIN)		/**< Lowest desk position (measured from original controller) */
-#define MOTOR_POSITION_MAX					(6537 - MOTOR_SAFETY_MARGIN)	/**< Highest desk position (measured from original controller) */
-//#define MOTOR_POSITION_MAX				(6777 - MOTOR_SAFETY_MARGIN)	
+#define MOTOR_SAFETY_MARGIN					100			/**< No motor movement if position difference is less than 100 'step values' */
+#define MOTOR_POSITION_MIN					200			/**< Lowest desk position (about 62cm) */
+#define MOTOR_POSITION_MAX					6400		/**< Highest desk position (about 124cm) */
 
 #define MOTOR_SERVICE_INTERVAL				50			/**< Run motor burst every 50ms */
 #define MOTOR_BRAKING_DISTANCE				5			/**< Before stopping the motors move slow for 5 iterations (measured from original controller) */
@@ -98,7 +97,9 @@
  * The motors might be busy in different operation modes. 
  */
 enum motor_mode {
-	MOTOR_MODE_NORMAL,			/**< Motors are ready and operating normal */
+	//MOTOR_MODE_NORMAL,			/**< Motors are ready and operating normal */
+	MOTOR_MODE_READY,
+	MOTOR_MODE_MOVE,
 	MOTOR_MODE_CALIBRATION,		/**< Motors are currently calibrating */
 	MOTOR_MODE_CRITICAL			/**< Motors got stuck and are therefore in a critical condition */
 };

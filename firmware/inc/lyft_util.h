@@ -33,4 +33,16 @@
 #define MAX(a,b)							(((a) > (b)) ? (a) : (b))
 
 
+/** 
+ * @brief Difference of two numbers as absolute value
+ *
+ * Computes the difference of two (unsigned) integer values and returns 
+ * the result as absolute value. 
+ *
+ * @param[in] num1 value one
+ * @param[in] num2 value two
+ */
+uint16_t abs_difference(uint16_t num1, uint16_t num2);
+
+
 #endif /* LYFT_UTIL_H_ */

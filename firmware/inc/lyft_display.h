@@ -35,37 +35,38 @@
  * which can be shown on the 7-segment display.
  */
 enum char_set {
-	CHAR_DIGIT_0					= 0,		/**< Digit 0 */
-	CHAR_DIGIT_1					= 1,		/**< Digit 1 */
-	CHAR_DIGIT_2					= 2,		/**< Digit 2 */
-	CHAR_DIGIT_3					= 3,		/**< Digit 3 */
-	CHAR_DIGIT_4					= 4,		/**< Digit 4 */
-	CHAR_DIGIT_5					= 5,		/**< Digit 5 */
-	CHAR_DIGIT_6					= 6,		/**< Digit 6 */
-	CHAR_DIGIT_7					= 7,		/**< Digit 7 */
-	CHAR_DIGIT_8					= 8,		/**< Digit 8 */
-	CHAR_DIGIT_9					= 9,		/**< Digit 9 */
-	CHAR_UPPER_A					= 10,		/**< Char 'A' */
-	CHAR_UPPER_C					= 11,		/**< Char 'C' */
-	CHAR_UPPER_E					= 12,		/**< Char 'E' */
-	CHAR_UPPER_F					= 13,		/**< Char 'F' */
-	CHAR_UPPER_H					= 14,		/**< Char 'H' */
-	CHAR_UPPER_L					= 15,		/**< Char 'L' */
-	CHAR_UPPER_O					= 16,		/**< Char 'O' */
-	CHAR_UPPER_P					= 17,		/**< Char 'P' */
-	CHAR_UPPER_U					= 18,		/**< Char 'U' */
-	CHAR_LOWER_C					= 19,		/**< Char 'c' */
-	CHAR_LOWER_D					= 20,		/**< Char 'd' */
-	CHAR_LOWER_I					= 21,		/**< Char 'i' */
-	CHAR_LOWER_N					= 22,		/**< Char 'n' */
-	CHAR_LOWER_O					= 23,		/**< Char 'o' */
-	CHAR_LOWER_R					= 24,		/**< Char 'r' */
-	CHAR_DP							= 25,		/**< Dot point */
-	CHAR_BLANK						= 26,		/**< Space */
-	CHAR_COLON						= 27,		/**< Colon sign (available as own segment on the display) */
-	CHAR_MINUS						= 28,		/**< Minus sign */
-	CHAR_UNDERLINE					= 29,		/**< Underline */
-	CHAR_ALPHABET					= 30
+	CHAR_DIGIT_0,					/**< Digit 0 */
+	CHAR_DIGIT_1,					/**< Digit 1 */
+	CHAR_DIGIT_2,					/**< Digit 2 */
+	CHAR_DIGIT_3,					/**< Digit 3 */
+	CHAR_DIGIT_4,					/**< Digit 4 */
+	CHAR_DIGIT_5,					/**< Digit 5 */
+	CHAR_DIGIT_6,					/**< Digit 6 */
+	CHAR_DIGIT_7,					/**< Digit 7 */
+	CHAR_DIGIT_8,					/**< Digit 8 */
+	CHAR_DIGIT_9,					/**< Digit 9 */
+	CHAR_UPPER_A,					/**< Char 'A' */
+	CHAR_UPPER_C,					/**< Char 'C' */
+	CHAR_UPPER_E,					/**< Char 'E' */
+	CHAR_UPPER_F,					/**< Char 'F' */
+	CHAR_UPPER_G,					/**< Char 'G' */
+	CHAR_UPPER_H,					/**< Char 'H' */
+	CHAR_UPPER_L,					/**< Char 'L' */
+	CHAR_UPPER_O,					/**< Char 'O' */
+	CHAR_UPPER_P,					/**< Char 'P' */
+	CHAR_UPPER_U,					/**< Char 'U' */
+	CHAR_LOWER_C,					/**< Char 'c' */
+	CHAR_LOWER_D,					/**< Char 'd' */
+	CHAR_LOWER_I,					/**< Char 'i' */
+	CHAR_LOWER_N,					/**< Char 'n' */
+	CHAR_LOWER_O,					/**< Char 'o' */
+	CHAR_LOWER_R,					/**< Char 'r' */
+	CHAR_DP,						/**< Dot point */
+	CHAR_BLANK,						/**< Space */
+	CHAR_COLON,						/**< Colon sign (available as own segment on the display) */
+	CHAR_MINUS,						/**< Minus sign */
+	CHAR_UNDERLINE,					/**< Underline */
+	CHAR_ALPHABET					
 };
 
 /** 
@@ -102,7 +103,8 @@ enum display_state {
 	DISPLAY_MENU_SCREENTIME			= 0x14,			/**< Display shows the screentime menu entry */
 	DISPLAY_MENU_UNIT				= 0x15,			/**< Display shows the displayed unit menu entry */
 	DISPLAY_MENU_DRIFT				= 0x16,			/**< Display shows the drift of both motors */
-	DISPLAY_MENU_OFFSET				= 0x17			/**< Display shows the desk height offset (plus/minus 9cm) */
+	DISPLAY_MENU_OFFSET				= 0x17,			/**< Display shows the desk height offset (plus/minus 9cm) */
+	DISPLAY_MENU_DRIVEMODE			= 0x18			/**< Display shows the driving mode (desk moves automatic or manual to its position) */
 };
 
 /** 
@@ -240,6 +242,17 @@ void display_show_menuDrift(uint8_t drift);
  * @param[in] offset the current offset of the desk height
  */
 void display_show_menuOffset(uint8_t offset);
+
+/** 
+ * @brief Menu page 'Drive Mode'
+ *
+ * This page shows the current drive mode. It might be
+ * - (A) for automatic, or
+ * - (H) for manual (hand driven)
+ *
+ * @param[in] drive_mode the mode the desk is moved, either manually or automatically
+ */
+void display_show_menuDrivemode(uint8_t drive_mode);
 
 /** 
  * @brief Menu page 'Screentime'
