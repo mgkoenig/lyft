@@ -10,7 +10,7 @@
 #define CONF_NVMMAP_H_
 
 
-#define NVM_CONFIG_LEN					13		// 13 bytes of NVM memory for whole configuration 
+#define NVM_CONFIG_LEN					14		// 14 bytes of NVM memory for whole configuration 
 
 
 #define NVMIDX_POSITION_1				NVM_INDEX_0			// Desk memory position 1
@@ -40,6 +40,8 @@
 #define NVMIDX_OFFSET					NVM_INDEX_12		// desk height offset (+/- 9cm)
 #define NVMLEN_OFFSET					1
 
+#define NVMIDX_DRIVEMODE				NVM_INDEX_13		// drive mode (automatic or manual)
+#define NVMLEN_DRIVEMODE				1
 
 
 #endif /* CONF_NVMMAP_H_ */
