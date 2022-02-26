@@ -23,6 +23,7 @@ const uint8_t ascii[CHAR_ALPHABET] = {
 	0x4E,			// C
 	0x4F,			// E
 	0x47,			// F
+	0x5E,			// G
 	0x37,			// H
 	0x0E,			// L
 	0x7E,			// O
@@ -241,6 +242,21 @@ void display_show_menuOffset(uint8_t offset)
 		as1115_setDigit(2, ascii[number]);
 	}
 
+	as1115_setDigit(3, ascii[CHAR_COLON]);
+}
+
+void display_show_menuDrivemode(uint8_t drive_mode)
+{
+	as1115_setDigit(0, ascii[CHAR_UPPER_G]);
+	as1115_setDigit(1, ascii[CHAR_BLANK]);
+	
+	switch (drive_mode)
+	{
+		case 0: as1115_setDigit(2, ascii[CHAR_UPPER_H]); break;
+		case 1: as1115_setDigit(2, ascii[CHAR_UPPER_A]); break;
+		default: as1115_setDigit(2, ascii[CHAR_UNDERLINE]); break;
+	}
+	
 	as1115_setDigit(3, ascii[CHAR_COLON]);
 }
 

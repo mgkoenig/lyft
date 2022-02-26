@@ -69,7 +69,8 @@ void motor_init(void)
 	
 	safety_command = MOTOR_CMD_IDLE;
 	safety_procedure = MOTOR_SAFETY_PROTOCOL;
-	op_mode = MOTOR_MODE_NORMAL;
+	//op_mode = MOTOR_MODE_NORMAL;
+	op_mode = MOTOR_MODE_READY;
 }
 
 enum motor_mode motor_run(enum motor_event mot_ev)
@@ -104,11 +105,11 @@ enum motor_mode motor_run(enum motor_event mot_ev)
 	{
 		switch (mot_ev)
 		{
-			case MOTOR_EVENT_MOVE_UP: motor_move_up(); break;
-			case MOTOR_EVENT_MOVE_DOWN: motor_move_down(); break;
-			case MOTOR_EVENT_STOP: motor_move_stop(); break;
+			case MOTOR_EVENT_MOVE_UP: motor_move_up(); op_mode = MOTOR_MODE_MOVE; break;
+			case MOTOR_EVENT_MOVE_DOWN: motor_move_down(); op_mode = MOTOR_MODE_MOVE; break;
+			case MOTOR_EVENT_STOP: motor_move_stop(); op_mode = MOTOR_MODE_READY; break;
 			case MOTOR_EVENT_CALIBRATE: op_mode = MOTOR_MODE_CALIBRATION; break;
-			default: motor_move_stop; break;
+			default: motor_move_stop; op_mode = MOTOR_MODE_READY; break;
 		}		
 	}	
 	
@@ -330,7 +331,7 @@ static void motor_calibrate(void)
 	{
 		pos = mot_pos_hi;
 		cmd = MOTOR_CMD_CALIBRATION_STOP;
-		op_mode = MOTOR_MODE_NORMAL;
+		op_mode = MOTOR_MODE_READY;
 	}
 	
 	motor_sendCommand(pos, cmd);	
@@ -387,7 +388,7 @@ static void	motor_safety_protocol(void)
 	
 	if (safety_procedure == MOTOR_SAFETY_PROTOCOL)
 	{
-		op_mode = MOTOR_MODE_NORMAL;
+		op_mode = MOTOR_MODE_READY;
 	}	
 	
 	motor_sendCommand(pos, cmd);

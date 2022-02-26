@@ -8,10 +8,11 @@
 #include "lyft.h"
 
 
+static void lyft_button_triggered(enum keypad_layout button);
+static void lyft_button_contpress(enum keypad_layout button);
+
 static void lyft_menu_enter(void);
 static void lyft_menu_leave(void);
-static void lyft_menu_nextPage(void);
-static void lyft_menu_prevPage(void);
 static void lyft_menu_action(enum keypad_layout button);
 
 static void lyft_config_save(void);
@@ -21,6 +22,7 @@ static void lyft_config_setUnit(enum display_unit unit);
 static void lyft_config_setVolume(enum audio_volume volume);
 static void lyft_config_setBrightness(enum display_brightness bri);
 static void lyft_config_setScreentime(enum lyft_screentime screentime);
+static void lyft_config_setDrivemode(enum lyft_drive_mode drive_mode);
 static void lyft_config_incOffset(void);
 static void lyft_config_decOffset(void);
 
@@ -33,6 +35,7 @@ static void lyft_irq_keypad(void);
 bool						irq_keypad_suppress;
 uint16_t					time_index;
 struct lyft_config			config;
+bool						skip_audio;
 
 struct keypad_button		keypad[BUTTON_MAX];
 bool						keypad_poll;
@@ -46,10 +49,10 @@ enum display_state			previous_screen;
 bool						display_refresh;
 uint8_t						display_runtime;
 
+uint16_t					target_position;
 uint16_t					desk_position;
 uint16_t					desk_height;
 bool						motor_service;
-enum motor_event			motor_action;
 enum motor_mode				prev_motor_state;
 
 
@@ -89,11 +92,14 @@ void lyft_init(void)
 	
 	motor_init();
 	motor_service = false;
-	motor_action = MOTOR_EVENT_STOP;
-	prev_motor_state = MOTOR_MODE_NORMAL;
 	
+	skip_audio = false;
 	audio_play(TITLE_STARTUP);
 	hal_delay_msec(400);		// let's finish the song
+	
+	prev_motor_state = motor_run(MOTOR_EVENT_STOP);
+	desk_position = motor_getPosition();
+	target_position = desk_position;
 	
 	hal_timer_start(TIMER_MOTOR);
 }
@@ -101,16 +107,19 @@ void lyft_init(void)
 void lyft_run(void)
 {
 	bool				dot_point; 
-	bool				safety_pin;
+	bool				safety_pin;	
 	uint8_t				num_pressed_buttons;
+	uint16_t			position_diff;
 	uint16_t			prev_height;
 	static uint8_t		motor_drift;
 	enum motor_mode		motor_state;
+	enum motor_event	motor_action;
+	bool				motor_calibration = false;
 
 	if (keypad_poll == true)
 	{
 		num_pressed_buttons = keypad_read(keypad, time_index);
-		safety_pin = !(hal_gpio_getPinState(PIN_SAFETY));		// safety pin is low active
+		safety_pin = !(hal_gpio_getPinState(PIN_SAFETY));			// safety pin is low active 
 		
 		if (num_pressed_buttons > 0)
 		{
@@ -126,204 +135,84 @@ void lyft_run(void)
 					display_screen = DISPLAY_LOCKED;
 				}
 				
-				motor_action = MOTOR_EVENT_STOP;
-				keypad_poll_delay = KEYPAD_POLL_DELAY_LONG;					
+				target_position = desk_position;
+				keypad_poll_delay = KEYPAD_POLL_DELAY_LONG; 
 			}		
 			else 
 			{
 				if (num_pressed_buttons == 1)
 				{
-					if (keypad[BUTTON_1].state == BUTTON_STATE_PRESSED)
-					{
-						if ((display_screen & DISPLAY_MENU) == DISPLAY_MENU) {
-							lyft_menu_action(BUTTON_1);
-						} else if (display_screen == DISPLAY_OFF) {
-							display_screen = DISPLAY_DESKPOSITION;
-						}
-					
-						keypad_poll_delay = KEYPAD_POLL_DELAY_DEFAULT;
+					if (keypad[BUTTON_1].state == BUTTON_STATE_PRESSED) {
+						lyft_button_triggered(BUTTON_1);
 					}
 				
-					if (keypad[BUTTON_1].state == BUTTON_STATE_CONT_PRESS)
-					{											
-						if (display_screen == DISPLAY_DESKPOSITION)
-						{						
-							if ((MOTOR_POSITION_MIN < keypad[BUTTON_1].memory_position) && (keypad[BUTTON_1].memory_position < MOTOR_POSITION_MAX))
-							{
-								if (desk_position < (keypad[BUTTON_1].memory_position - MOTOR_SAFETY_MARGIN)) {
-									motor_action = MOTOR_EVENT_MOVE_UP;
-								} else if (desk_position > (keypad[BUTTON_1].memory_position + MOTOR_SAFETY_MARGIN)) {
-									motor_action = MOTOR_EVENT_MOVE_DOWN;
-								} else {
-									motor_action = MOTOR_EVENT_STOP;
-									if (prev_button != BUTTON_1) {
-										audio_play(TITLE_DOUBLE_CLICK);
-										prev_button = BUTTON_1;
-									}								
-								}
-							} else {
-								prev_button = BUTTON_1;
-								display_screen = DISPLAY_NO_POSITION;
-							}
-						}				
+					else if (keypad[BUTTON_1].state == BUTTON_STATE_CONT_PRESS) {											
+						lyft_button_contpress(BUTTON_1);
 					}
 				
-					if (keypad[BUTTON_2].state == BUTTON_STATE_PRESSED)
-					{
-						if ((display_screen & DISPLAY_MENU) == DISPLAY_MENU) {
-							lyft_menu_action(BUTTON_2);
-						} else if (display_screen == DISPLAY_OFF) {
-							display_screen = DISPLAY_DESKPOSITION;
-						}
-					
-						keypad_poll_delay = KEYPAD_POLL_DELAY_DEFAULT;
+					else if (keypad[BUTTON_2].state == BUTTON_STATE_PRESSED) {
+						lyft_button_triggered(BUTTON_2);
 					}
 				
-					if (keypad[BUTTON_2].state == BUTTON_STATE_CONT_PRESS)
-					{
-						if (display_screen == DISPLAY_DESKPOSITION)
-						{
-							if ((MOTOR_POSITION_MIN < keypad[BUTTON_2].memory_position) && (keypad[BUTTON_2].memory_position < MOTOR_POSITION_MAX))
-							{
-								if (desk_position < (keypad[BUTTON_2].memory_position - MOTOR_SAFETY_MARGIN)) {
-									motor_action = MOTOR_EVENT_MOVE_UP;
-								} else if (desk_position > (keypad[BUTTON_2].memory_position + MOTOR_SAFETY_MARGIN)) {
-									motor_action = MOTOR_EVENT_MOVE_DOWN;
-								} else {
-									motor_action = MOTOR_EVENT_STOP;
-									if (prev_button != BUTTON_2) {
-										audio_play(TITLE_DOUBLE_CLICK);
-										prev_button = BUTTON_2;
-									}
-								}
-							} else {
-								prev_button = BUTTON_2;
-								display_screen = DISPLAY_NO_POSITION;
-							}					
-						}
+					else if (keypad[BUTTON_2].state == BUTTON_STATE_CONT_PRESS) {
+						lyft_button_contpress(BUTTON_2);
 					}
 				
-					if (keypad[BUTTON_3].state == BUTTON_STATE_PRESSED)
-					{
-						if ((display_screen & DISPLAY_MENU) == DISPLAY_MENU) {
-							lyft_menu_action(BUTTON_3);
-						} else if (display_screen == DISPLAY_OFF) {
-							display_screen = DISPLAY_DESKPOSITION;
-						}
-					
-						keypad_poll_delay = KEYPAD_POLL_DELAY_DEFAULT;
+					else if (keypad[BUTTON_3].state == BUTTON_STATE_PRESSED) {
+						lyft_button_triggered(BUTTON_3);
 					}
 				
-					if (keypad[BUTTON_3].state == BUTTON_STATE_CONT_PRESS)
-					{
-						if (display_screen == DISPLAY_DESKPOSITION)
-						{
-							if ((MOTOR_POSITION_MIN < keypad[BUTTON_3].memory_position) && (keypad[BUTTON_3].memory_position < MOTOR_POSITION_MAX))
-							{
-								if (desk_position < (keypad[BUTTON_3].memory_position - MOTOR_SAFETY_MARGIN)) {
-									motor_action = MOTOR_EVENT_MOVE_UP;
-								} else if (desk_position > (keypad[BUTTON_3].memory_position + MOTOR_SAFETY_MARGIN)) {
-									motor_action = MOTOR_EVENT_MOVE_DOWN;
-								} else {
-									motor_action = MOTOR_EVENT_STOP;
-									if (prev_button != BUTTON_3) {
-										audio_play(TITLE_DOUBLE_CLICK);
-										prev_button = BUTTON_3;
-									}								
-								}
-							} else {
-								prev_button = BUTTON_3;
-								display_screen = DISPLAY_NO_POSITION;
-							}
-						}					
+					else if (keypad[BUTTON_3].state == BUTTON_STATE_CONT_PRESS) {
+						lyft_button_contpress(BUTTON_3);				
 					}
 				
-					if (keypad[BUTTON_4].state == BUTTON_STATE_PRESSED)
-					{
-						if ((display_screen & DISPLAY_MENU) == DISPLAY_MENU) {
-							lyft_menu_action(BUTTON_4);
-						} else if (display_screen == DISPLAY_OFF) {
-							display_screen = DISPLAY_DESKPOSITION;
-						}
-					
-						keypad_poll_delay = KEYPAD_POLL_DELAY_DEFAULT;
+					else if (keypad[BUTTON_4].state == BUTTON_STATE_PRESSED) {
+						lyft_button_triggered(BUTTON_4);
 					}
 				
-					if (keypad[BUTTON_4].state == BUTTON_STATE_CONT_PRESS)
-					{
-						if (display_screen == DISPLAY_DESKPOSITION)
-						{
-							if ((MOTOR_POSITION_MIN < keypad[BUTTON_4].memory_position) && (keypad[BUTTON_4].memory_position < MOTOR_POSITION_MAX))
-							{
-								if (desk_position < (keypad[BUTTON_4].memory_position - MOTOR_SAFETY_MARGIN)) {
-									motor_action = MOTOR_EVENT_MOVE_UP;
-								} else if (desk_position > (keypad[BUTTON_4].memory_position + MOTOR_SAFETY_MARGIN)) {
-									motor_action = MOTOR_EVENT_MOVE_DOWN;
-								} else {
-									motor_action = MOTOR_EVENT_STOP;
-									if (prev_button != BUTTON_4) {
-										audio_play(TITLE_DOUBLE_CLICK);
-										prev_button = BUTTON_4;
-									}								
-								}
-							} else {
-								prev_button = BUTTON_4;
-								display_screen = DISPLAY_NO_POSITION;
-							}
-						}
+					else if (keypad[BUTTON_4].state == BUTTON_STATE_CONT_PRESS) {
+						lyft_button_contpress(BUTTON_4);
 					}
 				
-					if (keypad[BUTTON_UP].state == BUTTON_STATE_PRESSED)
-					{
-						if ((display_screen & DISPLAY_MENU) == DISPLAY_MENU) {
-							lyft_menu_nextPage();
-						} else if (display_screen == DISPLAY_OFF) {
-							display_screen = DISPLAY_DESKPOSITION;
-						}
-					
-						keypad_poll_delay = KEYPAD_POLL_DELAY_DEFAULT;
+					else if (keypad[BUTTON_UP].state == BUTTON_STATE_PRESSED) {
+						lyft_button_triggered(BUTTON_UP);
 					}
 				
-					if (keypad[BUTTON_UP].state == BUTTON_STATE_CONT_PRESS)
+					else if (keypad[BUTTON_UP].state == BUTTON_STATE_CONT_PRESS)
 					{
 						if (display_screen == DISPLAY_DESKPOSITION) 
 						{
 							if (desk_position < (MOTOR_POSITION_MAX - MOTOR_SAFETY_MARGIN)) {
-								motor_action = MOTOR_EVENT_MOVE_UP;
+								target_position = MOTOR_POSITION_MAX;
+								skip_audio = true;
 							} else {
 								audio_play(TITLE_LIMIT);
-								motor_action = MOTOR_EVENT_STOP;
-								prev_button = BUTTON_UP;
+								target_position = desk_position;
 								display_screen = DISPLAY_LIMIT;
-							}	
+							} 
+							prev_button = BUTTON_UP;
 						}
-								
+
 						keypad_poll_delay = KEYPAD_POLL_DELAY_NONE;
 					}
 						
-					if (keypad[BUTTON_DOWN].state == BUTTON_STATE_PRESSED)
-					{
-						if ((display_screen & DISPLAY_MENU) == DISPLAY_MENU) {
-							lyft_menu_prevPage();
-						} else if (display_screen == DISPLAY_OFF) {
-							display_screen = DISPLAY_DESKPOSITION;
-						}
-
-						keypad_poll_delay = KEYPAD_POLL_DELAY_DEFAULT;
+					else if (keypad[BUTTON_DOWN].state == BUTTON_STATE_PRESSED) {
+						lyft_button_triggered(BUTTON_DOWN);
 					}
 				
-					if (keypad[BUTTON_DOWN].state == BUTTON_STATE_CONT_PRESS)
+					else if (keypad[BUTTON_DOWN].state == BUTTON_STATE_CONT_PRESS)
 					{
-						if (display_screen == DISPLAY_DESKPOSITION) 					
+						if (display_screen == DISPLAY_DESKPOSITION) 
 						{
 							if (desk_position > (MOTOR_POSITION_MIN + MOTOR_SAFETY_MARGIN)) {
-								motor_action = MOTOR_EVENT_MOVE_DOWN;
+								target_position = MOTOR_POSITION_MIN;
+								skip_audio = true;
 							} else {
 								audio_play(TITLE_LIMIT);
-								motor_action = MOTOR_EVENT_STOP;
-								prev_button = BUTTON_DOWN;
+								target_position = desk_position;
 								display_screen = DISPLAY_LIMIT;
-							}
+							} 
+							prev_button = BUTTON_DOWN;
 						}
 					
 						keypad_poll_delay = KEYPAD_POLL_DELAY_NONE;
@@ -332,35 +221,29 @@ void lyft_run(void)
 			
 				else if (num_pressed_buttons == 2)
 				{
-					motor_action = MOTOR_EVENT_STOP;				
-				
-					if ((keypad[BUTTON_UP].state == BUTTON_STATE_CONT_PRESS) && (keypad[BUTTON_DOWN].state == BUTTON_STATE_CONT_PRESS))
+					skip_audio = true;	
+					target_position = desk_position;
+					
+					if (display_screen == DISPLAY_DESKPOSITION)
 					{
-						uint16_t btn_hold_up = keypad_holdTime(time_index, keypad[BUTTON_UP].trigger_time);
-						uint16_t btn_hold_down = keypad_holdTime(time_index, keypad[BUTTON_DOWN].trigger_time);
-
-						if ((btn_hold_up > LYFT_MENU_ENTER_DELAY) && (btn_hold_down > LYFT_MENU_ENTER_DELAY))
+						if ((keypad[BUTTON_UP].state == BUTTON_STATE_CONT_PRESS) && (keypad[BUTTON_DOWN].state == BUTTON_STATE_CONT_PRESS))
 						{
-							if (display_screen == DISPLAY_DESKPOSITION)
-							{
+							uint16_t btn_hold_up = keypad_holdTime(time_index, keypad[BUTTON_UP].trigger_time);
+							uint16_t btn_hold_down = keypad_holdTime(time_index, keypad[BUTTON_DOWN].trigger_time);
+
+							if ((btn_hold_up > LYFT_MENU_ENTER_DELAY) && (btn_hold_down > LYFT_MENU_ENTER_DELAY)) {
 								lyft_menu_enter();
 							}
 						}
-					}
-				
-					if ((keypad[BUTTON_1].state == BUTTON_STATE_CONT_PRESS) && (keypad[BUTTON_2].state == BUTTON_STATE_CONT_PRESS))
-					{
-						uint16_t btn_hold_1 = keypad_holdTime(time_index, keypad[BUTTON_1].trigger_time);
-						uint16_t btn_hold_2 = keypad_holdTime(time_index, keypad[BUTTON_2].trigger_time);
-
-						if ((btn_hold_1 > LYFT_CALIBRATION_START_DELAY) && (btn_hold_2 > LYFT_CALIBRATION_START_DELAY))
+						
+						if ((keypad[BUTTON_1].state == BUTTON_STATE_CONT_PRESS) && (keypad[BUTTON_2].state == BUTTON_STATE_CONT_PRESS))
 						{
-							if (display_screen == DISPLAY_DESKPOSITION)
-							{
-								motor_action = MOTOR_EVENT_CALIBRATE;
+							uint16_t btn_hold_1 = keypad_holdTime(time_index, keypad[BUTTON_1].trigger_time);
+							uint16_t btn_hold_2 = keypad_holdTime(time_index, keypad[BUTTON_2].trigger_time);
+
+							if ((btn_hold_1 > LYFT_CALIBRATION_START_DELAY) && (btn_hold_2 > LYFT_CALIBRATION_START_DELAY) && (desk_position < LYFT_CALIBRATION_POSITION)) {
+								motor_calibration = true;
 							}
-							
-							keypad_poll_delay = KEYPAD_POLL_DELAY_DEFAULT;
 						}
 					}
 				}
@@ -368,25 +251,34 @@ void lyft_run(void)
 		}
 		else // (num_pressed_buttons > 0)
 		{
-			motor_action = MOTOR_EVENT_STOP;
+			if ((config.drive_mode == LYFT_DRIVE_MODE_MANUAL) || (prev_button == BUTTON_UP) || (prev_button == BUTTON_DOWN))
+			{
+				skip_audio = true;
+				target_position = desk_position;				
+			}
 			
 			if (safety_pin == false)
 			{
-				if ((display_screen & DISPLAY_MENU) == DISPLAY_MENU) {
-					lyft_menu_leave();
+				if (display_screen != DISPLAY_OFF)
+				{
+					display_screen = DISPLAY_DESKPOSITION;
+					
+					if ((display_screen & DISPLAY_MENU) == DISPLAY_MENU) {
+						lyft_menu_leave();
+					}
 				}
-				
-				display_screen = DISPLAY_DESKPOSITION;
+								
+				target_position = desk_position;				
 				keypad_poll_delay = KEYPAD_POLL_DELAY_LONG;
 			} 		
 			
 			if (prev_button < BUTTON_MAX)
-			{
+			{				
 				if (keypad[prev_button].state == BUTTON_STATE_RELEASED)
-				{
+				{				
 					prev_button = BUTTON_MAX;
 					display_screen = DISPLAY_DESKPOSITION;
-				}				
+				}	
 			}
 		}		
 		
@@ -394,13 +286,50 @@ void lyft_run(void)
 	}
 	
 	if (motor_service)
-	{			
+	{	
+		position_diff = abs_difference(desk_position, target_position);
+		
+		if (motor_calibration == true) {
+			motor_action = MOTOR_EVENT_CALIBRATE;
+		}
+		else if (position_diff > MOTOR_SAFETY_MARGIN)
+		{
+			if ((MOTOR_POSITION_MIN <= target_position) && (target_position <= MOTOR_POSITION_MAX))
+			{
+				if (desk_position < target_position) {
+					motor_action = MOTOR_EVENT_MOVE_UP;
+				}
+				else if (desk_position > target_position) {
+					motor_action = MOTOR_EVENT_MOVE_DOWN;
+				} 
+				else {
+					motor_action = MOTOR_EVENT_STOP;
+					target_position = desk_position;
+				}
+			}
+			else {
+				motor_action = MOTOR_EVENT_STOP;
+				target_position = desk_position;
+			}
+			
+			display_runtime = 0;
+		}
+		else 
+		{
+			motor_action = MOTOR_EVENT_STOP;
+			target_position = desk_position;
+			
+			if ((prev_motor_state == MOTOR_MODE_MOVE) && (skip_audio == false)) {
+				audio_play(TITLE_DOUBLE_CLICK);	
+			} 
+		}
+
 		motor_state = motor_run(motor_action);
 
 		prev_height = desk_height;
 		desk_position = motor_getPosition();
 		motor_drift = motor_getDrift();
-			
+		
 		if (config.unit == DISPLAY_UNIT_CENTIMETER) {
 			desk_height = motor_getHeightCentimeter(config.offset);
 		} else {
@@ -411,7 +340,8 @@ void lyft_run(void)
 			display_refresh = true;
 		}
 		
-		if ((prev_motor_state == MOTOR_MODE_NORMAL) && (motor_state == MOTOR_MODE_CRITICAL)) {
+		/* check and handle some special conditions */
+		if ((prev_motor_state == MOTOR_MODE_MOVE) && (motor_state == MOTOR_MODE_CRITICAL)) {
 			audio_play(TITLE_ALARM);
 			display_screen = DISPLAY_CRITICAL;
 			display_runtime = 0;			
@@ -424,11 +354,13 @@ void lyft_run(void)
 			display_screen = DISPLAY_CALIBRATION;
 			display_runtime = 0;
 		}
-		else if ((prev_motor_state == MOTOR_MODE_CRITICAL) && (motor_state == MOTOR_MODE_NORMAL)) {
+		else if ((prev_motor_state == MOTOR_MODE_CRITICAL) && (motor_state == MOTOR_MODE_READY)) {
+			target_position = desk_position;
 			display_screen = DISPLAY_DESKPOSITION;
 			display_runtime = 0;
 		}
-		else if ((prev_motor_state == MOTOR_MODE_CALIBRATION) && (motor_state == MOTOR_MODE_NORMAL)) {
+		else if ((prev_motor_state == MOTOR_MODE_CALIBRATION) && (motor_state == MOTOR_MODE_READY)) {
+			target_position = desk_position;
 			display_screen = DISPLAY_DESKPOSITION;
 			display_runtime = 0;
 		}
@@ -462,6 +394,7 @@ void lyft_run(void)
 			case DISPLAY_MENU_VOLUME: display_show_menuVolume(config.volume); break;
 			case DISPLAY_MENU_BRIGHTNESS: display_show_menuBrightness(config.brightness); break;
 			case DISPLAY_MENU_SCREENTIME: display_show_menuScreentime((uint8_t) config.screentime); break;
+			case DISPLAY_MENU_DRIVEMODE: display_show_menuDrivemode((uint8_t) config.drive_mode); break;
 			default: display_show_error(); break;
 		}
 		
@@ -469,6 +402,66 @@ void lyft_run(void)
 		display_refresh = false;
 	}	
 }
+
+
+/************************************************************************/
+/* BUTTON HANDLING                                                      */
+/************************************************************************/
+static void lyft_button_triggered(enum keypad_layout button)
+{
+	if (display_screen == DISPLAY_OFF) {
+		display_screen = DISPLAY_DESKPOSITION;
+	} else if ((display_screen & DISPLAY_MENU) == DISPLAY_MENU) {
+		lyft_menu_action(button);
+	}
+	
+	if (prev_motor_state == MOTOR_MODE_MOVE) {
+		skip_audio = true;
+	} else {
+		skip_audio = false;
+	}
+	
+	target_position = desk_position;
+	keypad_poll_delay = KEYPAD_POLL_DELAY_DEFAULT;
+}
+
+static void lyft_button_contpress(enum keypad_layout button)
+{
+	uint16_t diff, hold_time;
+	
+	if (display_screen == DISPLAY_DESKPOSITION)
+	{
+		if ((MOTOR_POSITION_MIN < keypad[button].memory_position) && (keypad[button].memory_position < MOTOR_POSITION_MAX))
+		{
+			diff = abs_difference(keypad[button].memory_position, desk_position);
+				
+			if (diff > MOTOR_SAFETY_MARGIN)
+			{
+				if (config.drive_mode == LYFT_DRIVE_MODE_AUTOMATIC)
+				{
+					hold_time = keypad_holdTime(time_index, keypad[button].trigger_time);
+						
+					if (hold_time > LYFT_AUTOMATIC_DRIVE_DELAY) {
+						skip_audio = false;
+						target_position = keypad[button].memory_position;
+					} 
+				} else {
+					skip_audio = false;
+					target_position = keypad[button].memory_position;
+				}
+			} else {
+				if (skip_audio == false) {
+					audio_play(TITLE_DOUBLE_CLICK);
+					skip_audio = true;
+				}
+			}
+		} else {
+			prev_button = button;
+			display_screen = DISPLAY_NO_POSITION;
+		}		
+	}
+}
+
 
 /************************************************************************/
 /* MENU CONFIGURATION                                                   */
@@ -486,36 +479,6 @@ static void lyft_menu_leave(void)
 	display_runtime = 0;
 }
 
-static void lyft_menu_nextPage(void)
-{
-	switch (display_screen)
-	{
-		case DISPLAY_MENU_POSITION: display_screen = DISPLAY_MENU_BRIGHTNESS; break;
-		case DISPLAY_MENU_BRIGHTNESS: display_screen = DISPLAY_MENU_VOLUME; break;
-		case DISPLAY_MENU_VOLUME: display_screen = DISPLAY_MENU_SCREENTIME; break;
-		case DISPLAY_MENU_SCREENTIME: display_screen = DISPLAY_MENU_UNIT; break;
-		case DISPLAY_MENU_UNIT: display_screen = DISPLAY_MENU_OFFSET; break;
-		case DISPLAY_MENU_OFFSET: display_screen = DISPLAY_MENU_DRIFT; break; 
-		case DISPLAY_MENU_DRIFT: display_screen = DISPLAY_MENU_POSITION; break;
-		default: display_screen = DISPLAY_ERROR; break;
-	}
-}
-
-static void lyft_menu_prevPage(void)
-{
-	switch (display_screen)
-	{
-		case DISPLAY_MENU_POSITION: display_screen = DISPLAY_MENU_DRIFT; break;
-		case DISPLAY_MENU_BRIGHTNESS: display_screen = DISPLAY_MENU_POSITION; break;
-		case DISPLAY_MENU_VOLUME: display_screen = DISPLAY_MENU_BRIGHTNESS; break;
-		case DISPLAY_MENU_SCREENTIME: display_screen = DISPLAY_MENU_VOLUME; break;
-		case DISPLAY_MENU_UNIT: display_screen = DISPLAY_MENU_SCREENTIME; break;
-		case DISPLAY_MENU_OFFSET: display_screen = DISPLAY_MENU_UNIT; break;
-		case DISPLAY_MENU_DRIFT: display_screen = DISPLAY_MENU_OFFSET; break;
-		default: display_screen = DISPLAY_ERROR; break;
-	}
-}
-
 static void lyft_menu_action(enum keypad_layout button)
 {	
 	if (button == BUTTON_1)
@@ -529,6 +492,7 @@ static void lyft_menu_action(enum keypad_layout button)
 			case DISPLAY_MENU_VOLUME: lyft_config_setVolume(AUDIO_VOLUME_OFF); break;
 			case DISPLAY_MENU_BRIGHTNESS: lyft_config_setBrightness(DISPLAY_BRIGHTNESS_25); break;
 			case DISPLAY_MENU_SCREENTIME: lyft_config_setScreentime(LYFT_SCREENTIME_5SEC); break;
+			case DISPLAY_MENU_DRIVEMODE: lyft_config_setDrivemode(LYFT_DRIVE_MODE_MANUAL); break;
 			default: display_show_error(); break;
 		}
 	}
@@ -543,6 +507,7 @@ static void lyft_menu_action(enum keypad_layout button)
 			case DISPLAY_MENU_VOLUME: lyft_config_setVolume(AUDIO_VOLUME_LOW); break;
 			case DISPLAY_MENU_BRIGHTNESS: lyft_config_setBrightness(DISPLAY_BRIGHTNESS_50); break;
 			case DISPLAY_MENU_SCREENTIME: lyft_config_setScreentime(LYFT_SCREENTIME_10SEC); break;
+			case DISPLAY_MENU_DRIVEMODE: lyft_config_setDrivemode(LYFT_DRIVE_MODE_AUTOMATIC); break;
 			default: display_show_error(); break;
 		}
 	}
@@ -557,6 +522,7 @@ static void lyft_menu_action(enum keypad_layout button)
 			case DISPLAY_MENU_VOLUME: lyft_config_setVolume(AUDIO_VOLUME_MID); break;
 			case DISPLAY_MENU_BRIGHTNESS: lyft_config_setBrightness(DISPLAY_BRIGHTNESS_75); break;
 			case DISPLAY_MENU_SCREENTIME: lyft_config_setScreentime(LYFT_SCREENTIME_15SEC); break;
+			case DISPLAY_MENU_DRIVEMODE: break;
 			default: display_show_error(); break;
 		}
 	}
@@ -571,7 +537,38 @@ static void lyft_menu_action(enum keypad_layout button)
 			case DISPLAY_MENU_VOLUME: lyft_config_setVolume(AUDIO_VOLUME_HIGH); break;
 			case DISPLAY_MENU_BRIGHTNESS: lyft_config_setBrightness(DISPLAY_BRIGHTNESS_100); break;
 			case DISPLAY_MENU_SCREENTIME: lyft_config_setScreentime(LYFT_SCREENTIME_20SEC); break;
+			case DISPLAY_MENU_DRIVEMODE: break;
 			default: display_show_error(); break;
+		}
+	}
+	else if (button == BUTTON_UP)	// show next menu page
+	{
+		switch (display_screen)
+		{
+			case DISPLAY_MENU_POSITION: display_screen = DISPLAY_MENU_BRIGHTNESS; break;
+			case DISPLAY_MENU_BRIGHTNESS: display_screen = DISPLAY_MENU_VOLUME; break;
+			case DISPLAY_MENU_VOLUME: display_screen = DISPLAY_MENU_SCREENTIME; break;
+			case DISPLAY_MENU_SCREENTIME: display_screen = DISPLAY_MENU_UNIT; break;
+			case DISPLAY_MENU_UNIT: display_screen = DISPLAY_MENU_DRIVEMODE; break;
+			case DISPLAY_MENU_DRIVEMODE: display_screen = DISPLAY_MENU_OFFSET; break;
+			case DISPLAY_MENU_OFFSET: display_screen = DISPLAY_MENU_DRIFT; break;
+			case DISPLAY_MENU_DRIFT: display_screen = DISPLAY_MENU_POSITION; break;
+			default: display_screen = DISPLAY_ERROR; break;
+		}
+	}
+	else if (button == BUTTON_DOWN)	// show previous menu page
+	{
+		switch (display_screen)
+		{
+			case DISPLAY_MENU_POSITION: display_screen = DISPLAY_MENU_DRIFT; break;
+			case DISPLAY_MENU_BRIGHTNESS: display_screen = DISPLAY_MENU_POSITION; break;
+			case DISPLAY_MENU_VOLUME: display_screen = DISPLAY_MENU_BRIGHTNESS; break;
+			case DISPLAY_MENU_SCREENTIME: display_screen = DISPLAY_MENU_VOLUME; break;
+			case DISPLAY_MENU_UNIT: display_screen = DISPLAY_MENU_SCREENTIME; break;
+			case DISPLAY_MENU_DRIVEMODE: display_screen = DISPLAY_MENU_UNIT; break;
+			case DISPLAY_MENU_OFFSET: display_screen = DISPLAY_MENU_DRIVEMODE; break;
+			case DISPLAY_MENU_DRIFT: display_screen = DISPLAY_MENU_OFFSET; break;
+			default: display_screen = DISPLAY_ERROR; break;
 		}
 	}
 }
@@ -605,6 +602,7 @@ static void lyft_config_save(void)
 	conf_file[NVMIDX_SCREENTIME] = config.screentime;
 	conf_file[NVMIDX_UNIT] = config.unit;
 	conf_file[NVMIDX_OFFSET] = config.offset;
+	conf_file[NVMIDX_DRIVEMODE] = config.drive_mode;
 	
 	hal_nvm_write(0, conf_file, NVM_CONFIG_LEN);
 }
@@ -657,6 +655,12 @@ static void lyft_config_load(void)
 	} else {	// default value
 		config.volume = AUDIO_VOLUME_MID;
 	}
+	
+	if (conf_file[NVMIDX_DRIVEMODE] < LYFT_DRIVE_MODE_MAX) {
+		config.drive_mode = conf_file[NVMIDX_DRIVEMODE];
+	} else {	// default value
+		config.drive_mode = LYFT_DRIVE_MODE_MANUAL;
+	}	
 }
 
 static void lyft_config_setPosition(enum keypad_layout button)
@@ -712,6 +716,15 @@ static void lyft_config_setScreentime(enum lyft_screentime screentime)
 	}
 }
 
+static void lyft_config_setDrivemode(enum lyft_drive_mode drive_mode)
+{
+	if (drive_mode < LYFT_DRIVE_MODE_MAX)
+	{
+		config.drive_mode = drive_mode;
+		display_refresh = true;
+	}
+}
+
 static void lyft_config_incOffset(void)
 {
 	if (config.offset < LYFT_OFFSET_PLUS_9) {
@@ -753,8 +766,13 @@ static void lyft_cb_display(void)
 			hal_timer_stop(TIMER_KEYPAD);
 			time_index = 0;
 			
-			display_screen = DISPLAY_OFF;
+			/*
+			 * TODO reset trigger/release timestamps of buttons? 
+			 * For future use, to detect double clicks. 
+			 */
 			
+			display_screen = DISPLAY_OFF;		
+						
 			irq_keypad_suppress = true;
 			hal_irq_enable(IRQ_SOURCE_KEYPAD);
 		}
