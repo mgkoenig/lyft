@@ -1,7 +1,9 @@
 # LYFT
 LYFT is a sophisticated remote control for the famous IKEA BEKANT desk. It replaces the original controller and adds a number of useful features for more options and convenience. 
 
-See a fully assembled version of LYFT on [tindie](https://www.tindie.com/products/mgkoenig/lyft/). 
+![lyft_model](/doc/model.png)
+
+See a fully assembled version of LYFT in action on [tindie](https://www.tindie.com/products/mgkoenig/lyft/). 
 
 ## Features 
 #### Saving Desk Positions  
@@ -18,3 +20,5 @@ One of the most useful features is the automatic driving mode which allows you t
 
 #### Safety Pin 
 On the basis of the original controller LYFT also supports a safety pin. The pin is needed to move the desk and to unlock the settings menu for changes. It is fully compatible with the original IKEA safety pin which is provided with the BEKANT desk. 
+
+Further details and how to use these features are described in the [manual](/doc/manual.pdf).
