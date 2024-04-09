@@ -3,7 +3,7 @@ LYFT is a sophisticated remote control for the famous IKEA BEKANT desk. It repla
 
 ![lyft_model](/model.png)
 
-See a fully assembled version of LYFT in action on [tindie](https://www.tindie.com/products/mgkoenig/lyft/). 
+See a fully assembled version of LYFT in action on [tindie](https://www.tindie.com/products/mgkoenig/lyft/) or read a featured article on [ikeahackers](https://ikeahackers.net/2024/03/ikea-adjustable-desk.html).
 
 ## Features 
 #### Saving Desk Positions  
