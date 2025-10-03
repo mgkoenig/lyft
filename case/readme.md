@@ -1,5 +1,7 @@
 # LyftV9_2 v36 (R1.00.00)
 
+The slicer file was made for the Prusa mk3s+. 
+
 ## Print Part Combinations
 ### Main Body
 ![](doc/main_body.png)
